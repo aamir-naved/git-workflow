@@ -1,5 +1,8 @@
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
+import os
+import tempfile
+import pygit2
 
 # Create FastAPI app
 app = FastAPI()
@@ -26,6 +29,32 @@ def create_item(item: Item):
 @app.post("/webhook")
 async def webhook_receiver(request: Request):
     payload = await request.json()
-    print("Webhook Received: ", payload)
-    return {"status":"Ok"}
+
+    ref = payload.get("ref")
+    if ref != "refs/heads/main":
+        return {"status": "ignored"}
+
+    print("Main branch updated! Testing sync with release/phase2...")
+
+    # 1. Clone into temp dir
+    tmpdir = tempfile.mkdtemp()
+    repo_url = payload["repository"]["clone_url"]
+    repo = pygit2.clone_repository(repo_url, tmpdir)
+
+    # 2. Checkout release/phase2
+    repo.checkout("refs/heads/release/phase2")
+
+    # 3. Find commits
+    main_commit = repo.lookup_reference("refs/heads/main").peel()
+    target_commit = repo.lookup_reference("refs/heads/release/phase2").peel()
+
+    # 4. Try merge
+    repo.merge(main_commit.oid)
+
+    if repo.index.conflicts is not None:
+        print("❌ Conflict detected!")
+    else:
+        print("✅ Merge is clean!")
+
+    return {"status": "tested"}
 
