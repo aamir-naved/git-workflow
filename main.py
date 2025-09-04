@@ -62,12 +62,18 @@ async def webhook_receiver(request: Request):
 
     # 6. Merge main → release/phase2
     repo.checkout("refs/heads/release/phase2")
-    repo.merge(main_commit.id)
+    # Try merge
+    try:
+        repo.merge(main_commit.id)
 
-    if repo.index.conflicts is not None:
-        print("❌ Conflict detected!")
-    else:
-        print("✅ Merge is clean!")
-
-    return {"status": "tested"}
+        if repo.index.conflicts is not None:
+            conflicts = [c[0].path for c in repo.index.conflicts]
+            print("❌ Conflict detected in files:", conflicts)
+            return {"status": "conflict", "files": conflicts}
+        else:
+            print("✅ No conflicts, merge successful")
+            return {"status": "merged"}
+    except Exception as e:
+        print("❌ Merge error:", str(e))
+        return {"status": "error", "detail": str(e)}
 
