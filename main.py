@@ -34,7 +34,7 @@ async def webhook_receiver(request: Request):
     if ref != "refs/heads/main":
         return {"status": "ignored"}
 
-    print("Main branch updated! Testing sync with release/phase2...")
+    print("Main branch updated! Testing sync with release/phase3...")
 
     # 1. Clone repo
     tmpdir = tempfile.mkdtemp()
@@ -47,21 +47,21 @@ async def webhook_receiver(request: Request):
 
     # 3. Ensure release/phase2 exists
     try:
-        release_branch = repo.lookup_reference("refs/remotes/origin/release/phase2")
+        release_branch = repo.lookup_reference("refs/remotes/origin/release/phase3")
     except KeyError:
-        print("❌ release/phase2 branch not found on remote")
+        print("❌ release/phase3 branch not found on remote")
         return {"status": "error", "message": "branch missing"}
 
     # 4. Create local tracking branch
-    if "refs/heads/release/phase2" not in repo.references:
-        repo.create_branch("release/phase2", release_branch.peel())
+    if "refs/heads/release/phase3" not in repo.references:
+        repo.create_branch("release/phase3", release_branch.peel())
 
     # 5. Lookup commits
     main_commit = repo.lookup_reference("refs/heads/main").peel()
-    release_commit = repo.lookup_reference("refs/heads/release/phase2").peel()
+    release_commit = repo.lookup_reference("refs/heads/release/phase3").peel()
 
-    # 6. Merge main → release/phase2
-    repo.checkout("refs/heads/release/phase2")
+    # 6. Merge main → release/phase3
+    repo.checkout("refs/heads/release/phase3")
     # Try merge
     try:
         repo.merge(main_commit.id)
