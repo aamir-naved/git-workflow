@@ -26,6 +26,13 @@ class Item(BaseModel):
 def create_item(item: Item):
     return {"received": item.dict()}
 
+class TokenAuth(pygit2.RemoteCallbacks):
+    def __init__(self, token):
+        self.token = token
+
+    def credentials(self, url, username_from_url, allowed_types):
+        return pygit2.UserPass(self.token, "x-oauth-basic")
+
 @app.post("/webhook")
 async def webhook_receiver(request: Request):
     payload = await request.json()
@@ -39,11 +46,15 @@ async def webhook_receiver(request: Request):
     # 1. Clone repo
     tmpdir = tempfile.mkdtemp()
     repo_url = payload["repository"]["clone_url"]
-    repo = pygit2.clone_repository(repo_url, tmpdir)
+    token = os.getenv("GITHUB_TOKEN")
+    callbacks = TokenAuth(token)
+
+    # Clone with auth
+    repo = pygit2.clone_repository(repo_url, tmpdir, callbacks=callbacks)
 
     # 2. Fetch all branches
     for remote in repo.remotes:
-        remote.fetch()
+        remote.fetch(callbacks=callbacks)
 
     # 3. Ensure release/phase3 exists
     try:
