@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+pydantic
+pyyaml
+pygit2
+PyGithub
+httpx
+python-dotenv

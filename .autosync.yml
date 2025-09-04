@@ -1,0 +1,4 @@
+branches:
+  - release/phase1
+  - release/phase2
+strategy: merge
