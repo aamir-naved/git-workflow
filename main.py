@@ -36,20 +36,33 @@ async def webhook_receiver(request: Request):
 
     print("Main branch updated! Testing sync with release/phase2...")
 
-    # 1. Clone into temp dir
+    # 1. Clone repo
     tmpdir = tempfile.mkdtemp()
     repo_url = payload["repository"]["clone_url"]
     repo = pygit2.clone_repository(repo_url, tmpdir)
 
-    # 2. Checkout release/phase2
-    repo.checkout("refs/heads/release/phase2")
+    # 2. Fetch all branches
+    for remote in repo.remotes:
+        remote.fetch()
 
-    # 3. Find commits
+    # 3. Ensure release/phase2 exists
+    try:
+        release_branch = repo.lookup_reference("refs/remotes/origin/release/phase2")
+    except KeyError:
+        print("❌ release/phase2 branch not found on remote")
+        return {"status": "error", "message": "branch missing"}
+
+    # 4. Create local tracking branch
+    if "refs/heads/release/phase2" not in repo.references:
+        repo.create_branch("release/phase2", release_branch.peel())
+
+    # 5. Lookup commits
     main_commit = repo.lookup_reference("refs/heads/main").peel()
-    target_commit = repo.lookup_reference("refs/heads/release/phase2").peel()
+    release_commit = repo.lookup_reference("refs/heads/release/phase2").peel()
 
-    # 4. Try merge
-    repo.merge(main_commit.oid)
+    # 6. Merge main → release/phase2
+    repo.checkout("refs/heads/release/phase2")
+    repo.merge(main_commit.id)
 
     if repo.index.conflicts is not None:
         print("❌ Conflict detected!")
