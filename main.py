@@ -95,7 +95,7 @@ async def webhook_receiver(request: Request):
 
             # ✅ Push changes to remote
             remote = repo.remotes["origin"]
-            remote.push(["refs/heads/release/phase3"])
+            remote.push(["refs/heads/release/phase3"], callbacks=callbacks)
 
             print("✅ No conflicts, merge committed & pushed")
             return {"status": "merged", "commit": str(merge_commit)}
