@@ -45,7 +45,7 @@ async def webhook_receiver(request: Request):
     for remote in repo.remotes:
         remote.fetch()
 
-    # 3. Ensure release/phase2 exists
+    # 3. Ensure release/phase3 exists
     try:
         release_branch = repo.lookup_reference("refs/remotes/origin/release/phase3")
     except KeyError:
@@ -62,7 +62,6 @@ async def webhook_receiver(request: Request):
 
     # 6. Merge main → release/phase3
     repo.checkout("refs/heads/release/phase3")
-    # Try merge
     try:
         repo.merge(main_commit.id)
 
@@ -71,9 +70,24 @@ async def webhook_receiver(request: Request):
             print("❌ Conflict detected in files:", conflicts)
             return {"status": "conflict", "files": conflicts}
         else:
-            print("✅ No conflicts, merge successful")
-            return {"status": "merged"}
+            # ✅ NEW CODE: finalize merge commit
+            tree_id = repo.index.write_tree()
+            merge_commit = repo.create_commit(
+                "refs/heads/release/phase3",
+                repo.default_signature,
+                repo.default_signature,
+                "Merge main into release/phase3",
+                tree_id,
+                [release_commit.id, main_commit.id],
+            )
+            repo.state_cleanup()
+
+            # ✅ Push changes to remote
+            remote = repo.remotes["origin"]
+            remote.push(["refs/heads/release/phase3"])
+
+            print("✅ No conflicts, merge committed & pushed")
+            return {"status": "merged", "commit": str(merge_commit)}
     except Exception as e:
         print("❌ Merge error:", str(e))
         return {"status": "error", "detail": str(e)}
-
