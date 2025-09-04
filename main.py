@@ -62,7 +62,7 @@ async def webhook_receiver(request: Request):
 
     # 6. Merge main → release/phase2
     repo.checkout("refs/heads/release/phase2")
-    repo.merge(main_commit.oid)
+    repo.merge(main_commit.id)
 
     if repo.index.conflicts is not None:
         print("❌ Conflict detected!")
